@@ -31,7 +31,7 @@ The `skills_tutorial/` directory contains the following examples:
 ### Level 4: Tool Use & Validation
 **`database-schema-validator`**
 *   **Concept**: Delegating to deterministic scripts.
-*   **Function**: Validates SQL schema files for safety and naming conventions by running a Python script, ensuring 100% accuracy.
+*   **Function**: Validates a defined set of SQL safety, naming, and primary-key rules with a deterministic Python script.
 *   **Key Files**: `SKILL.md`, `scripts/validate_schema.py`
 
 ### Level 5: Composition (The "Batteries-Included" Skill)
