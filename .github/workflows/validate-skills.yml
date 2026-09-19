@@ -1,0 +1,82 @@
+name: Validate skills
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+
+      - name: Validate skill folders
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=0
+          for dir in skills_tutorial/*/; do
+            [ -d "$dir" ] || continue
+            found=1
+            test -f "${dir}SKILL.md" || {
+              echo "::error file=${dir}::Missing SKILL.md"
+              exit 1
+            }
+          done
+          test "$found" -eq 1 || {
+            echo "::error::No skill folders found"
+            exit 1
+          }
+
+      - name: Validate SKILL.md frontmatter
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          errors = []
+          for path in sorted(Path("skills_tutorial").glob("*/SKILL.md")):
+              text = path.read_text(encoding="utf-8")
+              if not text.startswith("---\n"):
+                  errors.append(f"{path}: missing YAML frontmatter")
+                  continue
+              try:
+                  frontmatter = text.split("---", 2)[1]
+              except IndexError:
+                  errors.append(f"{path}: malformed frontmatter")
+                  continue
+              if "\nname:" not in "\n" + frontmatter:
+                  errors.append(f"{path}: missing name")
+              if "\ndescription:" not in "\n" + frontmatter:
+                  errors.append(f"{path}: missing description")
+
+          if errors:
+              raise SystemExit("\n".join(errors))
+          PY
+
+      - name: Compile Python helpers
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import py_compile
+
+          for path in Path("skills_tutorial").rglob("*.py"):
+              py_compile.compile(str(path), doraise=True)
+          PY
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
